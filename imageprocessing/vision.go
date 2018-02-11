@@ -1,63 +1,54 @@
 package google
 
 import (
-	"io"
-	"fmt"
 	"golang.org/x/net/context"
 	vision "cloud.google.com/go/vision/apiv1"
 	"os"
 	"log"
-	//pb "google.golang.org/genproto/googleapis/cloud/vision/v1"
+	pb "google.golang.org/genproto/googleapis/cloud/vision/v1"
 )
 
+// this borrows heavily from https://cloud.google.com/vision/docs/detecting-labels#vision-label-detection-go
 
-/*
-detectLabels gets labels from the Vision API for an image at the given file path
-this is from https://cloud.google.com/vision/docs/detecting-labels#vision-label-detection-go
-*/
-func DetectLabelsURI(ctx context.Context, client vision.ImageAnnotatorClient, w io.Writer, URI string) error {
+
+// detects labels from uri
+func DetectLabelsURI(ctx context.Context, client vision.ImageAnnotatorClient, URI string) ([]*pb.EntityAnnotation, error) {
 
 	image := vision.NewImageFromURI(URI)
 	annotations, err := client.DetectLabels(ctx, image, nil, 10)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(annotations) == 0 {
-		fmt.Fprintln(w, "No labels found.")
-	} else {
-		fmt.Fprintln(w, "Labels from", URI, ":")
-		for _, annotation := range annotations {
-			fmt.Fprintln(w, annotation.Description)
-		}
+		log.Fatal("No labels found.")
+		return nil, err
 	}
 
-	return nil
+	return annotations, nil
 }
 
 
-// detects labesl from file
-func DetectLabelsFile(ctx context.Context, client vision.ImageAnnotatorClient, w io.Writer, filename string) error {
+// detects labels from file
+func DetectLabelsFile(ctx context.Context, client vision.ImageAnnotatorClient, filename string) ([]*pb.EntityAnnotation, error) {
 
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatalf("Failed to read file: %v", err)
+		return nil, err
 	}
 	defer file.Close()
 	image, err := vision.NewImageFromReader(file)
 	if err != nil {
 		log.Fatalf("Failed to create image: %v", err)
+		return nil, err
 	}
 
 	labels, err := client.DetectLabels(ctx, image, nil, 10)
 	if err != nil {
 		log.Fatalf("Failed to detect labels: %v", err)
+		return nil, err
 	}
 
-	fmt.Println("Labels from", filename, ":")
-	for _, label := range labels {
-		fmt.Println(label.Description)
-	}
-
-	return nil
+	return labels, nil
 }
